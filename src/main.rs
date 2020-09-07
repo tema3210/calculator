@@ -60,7 +60,6 @@ impl iced::Application for Calculator {
                         Err(e) => {
                             Self::Message::Status(String::from(format!("{:?}",e)))
                         },
-
                     }
                 })
             },
@@ -116,6 +115,7 @@ enum Token {
     Num(f64),
     Brace{lhs: bool},
 }
+
 impl Token {
     fn to_string(self) -> String {
         use crate::Token::*;
@@ -144,8 +144,8 @@ fn lexer(inp: String) -> Result<Vec<Token>,AppError>{
         //number before dot, number after dot, position of dot?, presence of number?
         let mut num_state: (f64,f64,Option<i32>,bool) = (0.0,0.0,None,false);
         let dump_numb = |state: (f64,f64,Option<i32>,bool)| -> f64 {
-            if state.2.is_some() {
-                state.0 + state.1 * 10.0f64.powi(-state.2.unwrap())
+            if let Some(shift) = state.2 {
+                state.0 + state.1 * 10.0f64.powi(-shift)
             } else {
                 state.0
             }
@@ -204,20 +204,106 @@ fn lexer(inp: String) -> Result<Vec<Token>,AppError>{
     };
     Ok(ret)
 }
-fn parse(tokens: Vec<Token>) -> Result<(),AppError> {
+
+#[derive(Debug,Clone)]
+enum TreeData {
+    Op(char),
+    Num(f64),
+}
+#[derive(Debug,Clone)]
+enum TreeLeaf {
+    Unary(Box<TreeNode>),
+    Binary{left: Box<TreeNode>, right: Box<TreeNode>}
+}
+#[derive(Debug,Clone)]
+enum TreeNode {
+    Ending{data: Option<TreeData>},
+    WithChilds{data: Option<TreeData>, children: Option<TreeLeaf>},
+}
+
+fn parse(tokens: Vec<Token>) -> Result<TreeNode,AppError> {
     //println!("{:?}",tokens.into_iter().map(Token::to_string).collect::<Vec<_>>());
-    Ok(())
+
+
+    unimplemented!()
 }
-fn eval(tree: ()) -> Result<f64,AppError> {
-    Ok(0.0)
+
+fn eval(tree: TreeNode) -> Result<f64,AppError> {
+    match tree {
+        TreeNode::Ending{data} => {
+            match data {
+                Some(TreeData::Num(f)) => {Ok(f)},
+                Some(TreeData::Op(_)) => {Err(AppError::EvalError("Found operation in place of number".to_string()))}
+                None => {Err(AppError::EvalError("Expected data on leaf".to_string()))}
+            }
+        }
+        TreeNode::WithChilds{data,children} => {
+            let childs = match children {
+                Some(kids) => kids,
+                None => return Err(AppError::EvalError("Children not found".to_string()))
+            };
+            match data {
+                Some(TreeData::Num(f)) => {Err(AppError::EvalError("Ill-formed tree".to_string()))},
+                Some(TreeData::Op(op)) => {
+                    match op {
+                        '+' => {
+                            match childs {
+                                TreeLeaf::Unary(_) => {Err(AppError::EvalError("Found unary op where binary expected".to_string()))},
+                                TreeLeaf::Binary{left,right} => {
+                                    Ok(eval(*left)? + eval(*right)?)
+                                },
+                            }
+                        },
+                        '-' => {
+                            match childs {
+                                TreeLeaf::Unary(_) => {Err(AppError::EvalError("Found unary op where binary expected".to_string()))},
+                                TreeLeaf::Binary{left,right} => {
+                                    Ok(eval(*left)? - eval(*right)?)
+                                },
+                            }
+                        },
+                        '*' => {
+                            match childs {
+                                TreeLeaf::Unary(_) => {Err(AppError::EvalError("Found unary op where binary expected".to_string()))},
+                                TreeLeaf::Binary{left,right} => {
+                                    Ok(eval(*left)? * eval(*right)?)
+                                },
+                            }
+                        },
+                        '/' => {
+                            match childs {
+                                TreeLeaf::Unary(_) => {Err(AppError::EvalError("Found unary op where binary expected".to_string()))},
+                                TreeLeaf::Binary{left,right} => {
+                                    Ok(eval(*left)? / eval(*right)?)
+                                },
+                            }
+                        },
+                        '^' => {
+                            match childs {
+                                TreeLeaf::Unary(_) => {Err(AppError::EvalError("Found unary op where binary expected".to_string()))},
+                                TreeLeaf::Binary{left,right} => {
+                                    Ok(eval(*left)?.powf(eval(*right)?))
+                                },
+                            }
+                        },
+                        _ => {
+                            Err(AppError::EvalError("Bad operation found".to_string()))
+                        }
+                    }
+                },
+                None => {
+                    Err(AppError::EvalError("Ill-formed tree".to_string()))
+                },
+            }
+        }
+    }
 }
+
+
 
 fn perform(inp: String) -> Result<f64,AppError> {
     eval(parse(lexer(inp)?)?)
 }
-
-
-
 fn main() {
     Calculator::run(Settings::default());
 }
