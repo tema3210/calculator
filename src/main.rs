@@ -57,12 +57,10 @@ impl iced::Application for Calculator {
                         Ok(num) => {
                             Self::Message::Output(num.to_string())
                         },
-                        Err(AppError::ParseError(s)) => {
-                            Self::Message::Status(String::from("Bad input: Error in evaluating; ") + &s)
+                        Err(e) => {
+                            Self::Message::Status(String::from(format!("{:?}",e)))
                         },
-                        Err(AppError::Test(s)) => {
-                            Self::Message::Status("TEST: ".to_string() + &s)
-                        }
+
                     }
                 })
             },
@@ -129,15 +127,6 @@ impl Token {
     }
 }
 
-impl Token {
-    fn to_string(self) -> String {
-        match self {
-            Token::Num(f) => format!("Num({})",f).into(),
-            Token::Op(c) => format!("Op({})",c).into(),
-            Token::Brace{lhs} => format!("Brace({})",if lhs {'('} else {')'}).into(),
-        }
-    }
-}
 fn lexer(inp: String) -> Result<Vec<Token>,AppError>{
     let strs = inp.split(' ').filter(|s| !s.is_empty());
 
@@ -216,13 +205,16 @@ fn lexer(inp: String) -> Result<Vec<Token>,AppError>{
     Ok(ret)
 }
 fn parse(tokens: Vec<Token>) -> Result<(),AppError> {
-    println!("{:?}",tokens.into_iter().map(Token::to_string).collect::<Vec<_>>());
+    //println!("{:?}",tokens.into_iter().map(Token::to_string).collect::<Vec<_>>());
     Ok(())
 }
 fn eval(tree: ()) -> Result<f64,AppError> {
     Ok(0.0)
 }
 
+fn perform(inp: String) -> Result<f64,AppError> {
+    eval(parse(lexer(inp)?)?)
+}
 
 
 
