@@ -26,8 +26,11 @@ enum Msg {
     Status(String),
 }
 
+#[derive(Debug)]
 enum AppError {
     ParseError(String),
+    EvalError(String),
+    LexError(String),
     Test(String),
 }
 
@@ -109,11 +112,21 @@ impl iced::Application for Calculator {
     }
 }
 
-#[derive(Clone,Copy)]
+#[derive(Clone,Copy,Debug)]
 enum Token {
-    Num(f64),
     Op(char),
+    Num(f64),
     Brace{lhs: bool},
+}
+impl Token {
+    fn to_string(self) -> String {
+        use crate::Token::*;
+        match self {
+            Op(ch) => format!("Op({})",ch),
+            Num(f) => format!("Num({})",f),
+            Brace{lhs} => format!("Brace('{}')",if lhs {'('} else {')'}),
+        }.into()
+    }
 }
 
 impl Token {
@@ -125,113 +138,94 @@ impl Token {
         }
     }
 }
+fn lexer(inp: String) -> Result<Vec<Token>,AppError>{
+    let strs = inp.split(' ').filter(|s| !s.is_empty());
 
-fn perform(input: String) -> Result<f64,AppError> {
-    const OP_TOKENS: [char;7] = ['(',')','+','-','*','/','^'];
-    let mut err: Option<Vec<&'static str>> = None;
-    let tokens: Vec<_> = input.split(r" ").filter(|s| !s.is_empty()).map(|semi_token: &str| -> Result<Vec<Token>,&'static str> {
-        use Token::*;
-        let mut it = semi_token.chars()
-            .filter(
-                |&ch| ch == '.' ||
-                    char::is_numeric(ch) ||
-                    OP_TOKENS.iter().fold(false,|acc,&item| acc || (item == ch))
-            );
-        //here goes number before dot, number after dot, dot position, presence of dot
-        let (mut num_bd,mut num_ad,mut ad_shift, mut dot_found) = (0.0f64,0.0f64,0i32,false);
-        let mut isNum = false;
-        loop {
-            let mut vc = Vec::new();
-            let mut num_producer = |reset: bool| -> f64 {
-                if !dot_found {
-                    if reset {num_bd=0.;num_ad=0.;ad_shift=0;dot_found=false;};
-                    num_bd
-                } else {
-                    if reset {num_bd=0.;num_ad=0.;ad_shift=0;dot_found=false;};
-                    num_bd + 10.0f64.powi(-ad_shift) * num_ad
-                }
-            };
+    let subber = |item: &str| -> Result<Vec<Token>,AppError> {
+        let mut ret = Vec::new();
+        let mut it = item.chars();
 
+        let op_pred = |ch: char| -> bool {
+            ['+','-','*','/','^'].iter().position(|&c| c == ch).is_some()
+        };
+        let brace_pred = |ch: char| -> bool {
+            if ch == '(' || ch == ')' { true } else { false }
+        };
 
-            match it.next() {
-                Some(ch) if OP_TOKENS.iter().position(|&i| i == ch).is_some() || ch.is_digit(10) || ch == '.' => {
-                    match ch {
-                        '(' => {
-                            if isNum {
-                                vc.push(Num(num_producer(true)));
-                                    isNum = false;
-                                };
-                                vc.push(Brace{lhs: true});
-                            },
-                        ')' => {
-                            if isNum {
-                                vc.push(Num(num_producer(true)));
-                                isNum = false;
-                            }
-                            vc.push(Brace{lhs: false});
-                        },
-                        '+' | '-' | '*' | '/' | '^' => {
-                            if isNum {
-                                vc.push(Num(num_producer(true)));
-                                isNum = false;
-                            }
-                            vc.push(Op(ch));
-                        },
-                        x if x.is_digit(10) => {
-                            if !isNum { isNum = true;num_producer(true);} //setting to number parsing mode
-                            else {
-                                if dot_found {
-                                    num_ad = num_ad * 10.0 + x.to_digit(10).unwrap() as f64;
-                                    ad_shift+=1;
-                                } else {
-                                    num_bd = num_bd * 10.0 + x.to_digit(10).unwrap() as f64;
-                                }
-                            }
-                        },
-                        '.' => {
-                            if isNum {
-                                if !dot_found { dot_found = true; }
-                                else {break Err("Second dot in number found")}
-                            } else {
-                                break Err("Found dot ouside of number")
-                            }
-                        }
-                        _ => {
-                            unreachable!()
-                        }
-                    }
-                },
-                Some(_) => {break Err("Found impossible char")},
-                None => {
-                    if isNum { vc.push(Num(num_producer(true)))}
-                    break Ok(vc)
-                }
-            }
-        }
-    }).map(|s| Result::unwrap_or_else(s,|e| {
-        match err {
-            Some(ref mut vec) => {
-                vec.push(e);
-            },
-            None => {
-                err = Some(Vec::new())
+        //number before dot, number after dot, position of dot?, presence of number?
+        let mut num_state: (f64,f64,Option<i32>,bool) = (0.0,0.0,None,false);
+        let dump_numb = |state: (f64,f64,Option<i32>,bool)| -> f64 {
+            if state.2.is_some() {
+                state.0 + state.1 * 10.0f64.powi(-state.2.unwrap())
+            } else {
+                state.0
             }
         };
-        vec![]
-    })).flatten().collect();
+        loop {
+            match it.next() {
+                Some(ch) if op_pred(ch) => {
+                    if num_state.3 {
+                        ret.push(Token::Num(dump_numb(num_state)));
+                        num_state = (0.0,0.0,None,false);
+                    }
+                    ret.push(Token::Op(ch));
+                },
+                Some(ch) if brace_pred(ch) => {
+                    if num_state.3 {
+                        ret.push(Token::Num(dump_numb(num_state)));
+                        num_state = (0.0,0.0,None,false);
+                    }
+                    ret.push(Token::Brace{lhs: ch == '('});
+                },
+                Some(ch) if ch.is_digit(10) => {
+                    num_state.3 = true;
+                    if let Some(ref mut dp) = num_state.2 {
+                        num_state.1 = num_state.1 * 10. + ch.to_digit(10).unwrap() as f64;
+                        *dp+=1;
+                    } else {
+                        num_state.0 = num_state.0 * 10. + ch.to_digit(10).unwrap() as f64;
+                    }
+                },
+                Some('.') => {
+                    if num_state.3 == false {break Err(AppError::LexError("Found dot outside of number".to_string()))};
+                    if num_state.2.is_some() {
+                        break Err(AppError::LexError("Found number with 2 dots".to_string()))
+                    } else {
+                        num_state.2 = Some(0)
+                    }
+                },
+                Some(_) => {
+                    break Err(AppError::LexError("Found improcessable char".to_string()))
+                },
+                None => {
+                    if num_state.3 {
+                        ret.push(Token::Num(dump_numb(num_state)))
+                    }
+                    break Ok(());
+                }
+            }
+        }?;
 
-    if let Some(err_vec) = err {
-        return Err(AppError::ParseError(err_vec.into_iter().fold(String::new(),|acc,s| {acc + "; " + s})));
+        Ok(ret)
     };
-    //tokens is vector of tokens
-    return Err(AppError::Test(input +" given " + &tokens.iter().fold(String::new(),|acc,&it| acc + " " + &(it.to_string()))));
 
-
-    // Err(AppError::ParseError("Unimplemented".to_string()))
+    let mut ret = Vec::new();
+    for i in strs {
+        ret.append(&mut subber(i)?);
+    };
+    Ok(ret)
+}
+fn parse(tokens: Vec<Token>) -> Result<(),AppError> {
+    println!("{:?}",tokens.into_iter().map(Token::to_string).collect::<Vec<_>>());
+    Ok(())
+}
+fn eval(tree: ()) -> Result<f64,AppError> {
+    Ok(0.0)
 }
 
 
 
+
 fn main() {
-    Calculator::run(Settings::default())
+    Calculator::run(Settings::default());
 }
