@@ -3,10 +3,6 @@ use iced::Element;
 use iced::Settings;
 use iced::{button,Command,Button, Column, Text, Row};
 use iced_native::widget::text_input;
-use regex::*;
-
-#[macro_use]
-extern crate lazy_static;
 
 #[derive(Default)]
 struct Calculator {
@@ -114,17 +110,6 @@ enum Token {
     Op(char),
     Num(f64),
     Brace{lhs: bool},
-}
-
-impl Token {
-    fn to_string(self) -> String {
-        use crate::Token::*;
-        match self {
-            Op(ch) => format!("Op({})",ch),
-            Num(f) => format!("Num({})",f),
-            Brace{lhs} => format!("Brace('{}')",if lhs {'('} else {')'}),
-        }.into()
-    }
 }
 
 fn lexer(inp: String) -> Result<Vec<Token>,AppError>{
@@ -243,7 +228,7 @@ fn eval(tree: TreeNode) -> Result<f64,AppError> {
                 None => return Err(AppError::EvalError("Children not found".to_string()))
             };
             match data {
-                Some(TreeData::Num(f)) => {Err(AppError::EvalError("Ill-formed tree".to_string()))},
+                Some(TreeData::Num(_f)) => {Err(AppError::EvalError("Ill-formed tree".to_string()))},
                 Some(TreeData::Op(op)) => {
                     match op {
                         '+' => {
