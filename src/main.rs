@@ -206,7 +206,7 @@ enum TreeNode {
     WithChilds{data: Option<char>, children: Option<TreeLeaf>},
 }
 
-fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
+fn parse(tokens: Vec<Token>) -> Result<TreeNode,AppError> {
     use Token::*;
     let mut acc = 0isize;
     for i in tokens.iter() {
@@ -231,14 +231,27 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
             if rht == OPS[i] {rp = Some(i)};
         };
         let (lp,rp) = (lp.unwrap(),rp.unwrap());
-        lp.cmp(&rp)
+        lp.cmp(&rp).reverse()
     };
 
+    let mut cloned = tokens.clone().into_iter().enumerate().collect::<Vec<_>>();
+    cloned.sort_by(|(_,a),(_,b)|{
+        use Token::*;
+        match (a,b) {
+            (Op(o1),Op(o2)) => op_comparator(*o1,*o2),
+            (Op(_),_) => {std::cmp::Ordering::Less},
+            (_,Op(_)) => {std::cmp::Ordering::Greater},
+            _ => std::cmp::Ordering::Equal,
+        }
+    });
+    println!("{:?}",cloned);
 
 
 
 
-    unimplemented!()
+
+
+    Err(AppError::ParseError("Not implemented".to_string()))
 }
 
 fn eval(tree: TreeNode) -> Result<f64,AppError> {
@@ -313,7 +326,7 @@ fn eval(tree: TreeNode) -> Result<f64,AppError> {
 
 fn perform(inp: String) -> Result<f64,AppError> {
     let tokens = lexer(inp)?;
-    let tree = parse(&tokens)?;
+    let tree = parse(tokens)?;
     eval(tree)
 }
 fn main() {
