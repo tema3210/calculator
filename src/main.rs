@@ -221,7 +221,20 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
         }
     };
     if acc != 0 {return Err(AppError::ParseError("Bad brace formation".to_string()))};
-    
+
+    //this will panic if chars are not operation chars
+    let op_comparator = |lft: char,rht: char| -> std::cmp::Ordering {
+        const OPS: [char;5] = ['+','-','*','/','^'];
+        let (mut lp,mut rp) = (None,None);
+        for i in 0..OPS.len() {
+            if lft == OPS[i] {lp = Some(i)};
+            if rht == OPS[i] {rp = Some(i)};
+        };
+        let (lp,rp) = (lp.unwrap(),rp.unwrap());
+        lp.cmp(&rp)
+    };
+
+
 
 
 
@@ -299,7 +312,9 @@ fn eval(tree: TreeNode) -> Result<f64,AppError> {
 
 
 fn perform(inp: String) -> Result<f64,AppError> {
-    eval(parse(&lexer(inp)?)?)
+    let tokens = lexer(inp)?;
+    let tree = parse(&tokens)?;
+    eval(tree)
 }
 fn main() {
     Calculator::run(Settings::default());
