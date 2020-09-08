@@ -203,11 +203,26 @@ enum TreeLeaf {
 #[derive(Debug,Clone)]
 enum TreeNode {
     Ending{data: Option<TreeData>},
-    WithChilds{data: Option<TreeData>, children: Option<TreeLeaf>},
+    WithChilds{data: Option<char>, children: Option<TreeLeaf>},
 }
 
-fn parse(tokens: Vec<Token>) -> Result<TreeNode,AppError> {
-    //println!("{:?}",tokens.into_iter().map(Token::to_string).collect::<Vec<_>>());
+fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
+    use Token::*;
+    let mut acc = 0isize;
+    for i in tokens.iter() {
+        match i {
+            Brace{lhs} => {
+                acc += if *lhs {1} else {-1};
+            },
+            _ => {}
+        }
+        if acc < 0 {
+            return Err(AppError::ParseError("Bad brace formation".to_string()))
+        }
+    };
+    if acc != 0 {return Err(AppError::ParseError("Bad brace formation".to_string()))};
+    
+
 
 
     unimplemented!()
@@ -228,8 +243,8 @@ fn eval(tree: TreeNode) -> Result<f64,AppError> {
                 None => return Err(AppError::EvalError("Children not found".to_string()))
             };
             match data {
-                Some(TreeData::Num(_f)) => {Err(AppError::EvalError("Ill-formed tree".to_string()))},
-                Some(TreeData::Op(op)) => {
+                None => {Err(AppError::EvalError("Ill-formed tree".to_string()))},
+                Some(op) => {
                     match op {
                         '+' => {
                             match childs {
@@ -276,9 +291,6 @@ fn eval(tree: TreeNode) -> Result<f64,AppError> {
                         }
                     }
                 },
-                None => {
-                    Err(AppError::EvalError("Ill-formed tree".to_string()))
-                },
             }
         }
     }
@@ -287,7 +299,7 @@ fn eval(tree: TreeNode) -> Result<f64,AppError> {
 
 
 fn perform(inp: String) -> Result<f64,AppError> {
-    eval(parse(lexer(inp)?)?)
+    eval(parse(&lexer(inp)?)?)
 }
 fn main() {
     Calculator::run(Settings::default());
