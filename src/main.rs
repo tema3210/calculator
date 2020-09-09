@@ -105,6 +105,7 @@ impl iced::Application for Calculator {
     }
 }
 
+//9bytes at most
 #[derive(Clone,Copy,Debug)]
 enum Token {
     Op(char),
@@ -113,8 +114,6 @@ enum Token {
 }
 
 fn lexer(inp: String) -> Result<Vec<Token>,AppError>{
-    let strs = inp.split(' ').filter(|s| !s.is_empty());
-
     let subber = |item: &str| -> Result<Vec<Token>,AppError> {
         let mut ret = Vec::new();
         let mut it = item.chars();
@@ -182,12 +181,10 @@ fn lexer(inp: String) -> Result<Vec<Token>,AppError>{
 
         Ok(ret)
     };
-
-    let mut ret = Vec::new();
-    for i in strs {
-        ret.append(&mut subber(i)?);
-    };
-    Ok(ret)
+    inp.split(' ').filter(|s| !s.is_empty()).try_fold(Vec::with_capacity(inp.len()/2),|mut acc,it|{
+        acc.append(&mut subber(it)?);
+        Ok(acc)
+    }).map(|mut ok| {Vec::shrink_to_fit(&mut ok);ok})
 }
 
 #[derive(Debug,Clone)]
@@ -208,27 +205,27 @@ enum TreeNode {
 
 fn parse(tokens: Vec<Token>) -> Result<TreeNode,AppError> {
     use Token::*;
-
+    let sz = tokens.len();
     let mut acc = 0isize;
-    let tokens = tokens.into_iter().try_fold(Vec::new(),|mut vec,it| {
+    let tokens = tokens.into_iter().try_fold(Vec::with_capacity(sz),|mut vec,it| {
         let mut flag = false;
         match it {
             Brace{lhs: true} => {
-                flag = true;
+                acc+=1;
             },
             Brace{lhs: false} => {
-                acc-=1;
-                if acc < 0 {return Err(AppError::ParseError("Bad brace formation".to_string()))};
+                flag = true;
             },
             _ => {}
         };
-        let ret = (it,acc);
-        if flag {acc+=1};
+        let ret = (acc,it);
+        if flag {acc-=1};
+        if acc < 0 {return Err(AppError::ParseError("Bad brace formation".to_string()))};
         vec.push(ret);
         Ok(vec)
     })?;
     if acc != 0 {return Err(AppError::ParseError("Bad brace formation".to_string()))};
-    if cfg!(Debug) {println!("{:?}",tokens);};
+    println!("{:?}",tokens);
 
     Err(AppError::ParseError("Not implemented".to_string()))
 }
