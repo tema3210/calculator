@@ -208,48 +208,27 @@ enum TreeNode {
 
 fn parse(tokens: Vec<Token>) -> Result<TreeNode,AppError> {
     use Token::*;
+
     let mut acc = 0isize;
-    for i in tokens.iter() {
-        match i {
-            Brace{lhs} => {
-                acc += if *lhs {1} else {-1};
+    let tokens = tokens.into_iter().try_fold(Vec::new(),|mut vec,it| {
+        let mut flag = false;
+        match it {
+            Brace{lhs: true} => {
+                flag = true;
+            },
+            Brace{lhs: false} => {
+                acc-=1;
+                if acc < 0 {return Err(AppError::ParseError("Bad brace formation".to_string()))};
             },
             _ => {}
-        }
-        if acc < 0 {
-            return Err(AppError::ParseError("Bad brace formation".to_string()))
-        }
-    };
-    if acc != 0 {return Err(AppError::ParseError("Bad brace formation".to_string()))};
-
-    //this will panic if chars are not operation chars
-    let op_comparator = |lft: char,rht: char| -> std::cmp::Ordering {
-        const OPS: [char;5] = ['+','-','*','/','^'];
-        let (mut lp,mut rp) = (None,None);
-        for i in 0..OPS.len() {
-            if lft == OPS[i] {lp = Some(i)};
-            if rht == OPS[i] {rp = Some(i)};
         };
-        let (lp,rp) = (lp.unwrap(),rp.unwrap());
-        lp.cmp(&rp).reverse()
-    };
-
-    let mut cloned = tokens.clone().into_iter().enumerate().collect::<Vec<_>>();
-    cloned.sort_by(|(_,a),(_,b)|{
-        use Token::*;
-        match (a,b) {
-            (Op(o1),Op(o2)) => op_comparator(*o1,*o2),
-            (Op(_),_) => {std::cmp::Ordering::Less},
-            (_,Op(_)) => {std::cmp::Ordering::Greater},
-            _ => std::cmp::Ordering::Equal,
-        }
-    });
-    println!("{:?}",cloned);
-
-
-
-
-
+        let ret = (it,acc);
+        if flag {acc+=1};
+        vec.push(ret);
+        Ok(vec)
+    })?;
+    if acc != 0 {return Err(AppError::ParseError("Bad brace formation".to_string()))};
+    if cfg!(Debug) {println!("{:?}",tokens);};
 
     Err(AppError::ParseError("Not implemented".to_string()))
 }
