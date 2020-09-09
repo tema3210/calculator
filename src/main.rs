@@ -181,7 +181,11 @@ fn lexer(inp: String) -> Result<Vec<Token>,AppError>{
 
         Ok(ret)
     };
+<<<<<<< HEAD
     inp.split(' ').filter(|s| !s.is_empty()).try_fold(Vec::with_capacity(inp.len()/2),|mut acc,it|{
+=======
+    inp.split(' ').filter(|s| !s.is_empty()).try_fold(Vec::with_capacity(inp.len()/6),|mut acc,it|{
+>>>>>>> 99a9ac181b152f5e510723ccb7d28bb1478c164d
         acc.append(&mut subber(it)?);
         Ok(acc)
     }).map(|mut ok| {Vec::shrink_to_fit(&mut ok);ok})
