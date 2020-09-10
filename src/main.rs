@@ -237,23 +237,27 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
         Dat(TreeNode),
     }
 
-    let braces_indices = tokens_ranks.into_iter().fold(
-        (Vec::with_capacity(brace_count),(None,None)),
-        |(mut vec,acc), &rank| {
+    let braces_indices = tokens_ranks.iter().enumerate().fold(
+        (Vec::with_capacity(brace_count),(None,None),false),
+        |(mut vec,acc,mut in_seq), (i,&rank)| {
             let mut local = match rank {
-                x if x > 0 && acc.0.is_some() => {
-                    (acc.0,Some(x))
+                x if x > 0 && acc.0.is_some() && in_seq => {
+                    (acc.0,Some(i))
                 },
                 x if x > 0 && acc.0.is_none() => {
-                    (Some(x),acc.1)
+                    in_seq=true;
+                    (Some(i),acc.1)
                 },
-                _ => {acc},
+                _ => {in_seq=false;acc},
             };
             if let (Some(start),Some(end)) = acc {
-                vec.push((start,end));
-                local = (None,None);
+                if in_seq {
+                    vec.push((start,end));
+                    local = (None,None);
+                };
             };
-            (vec,local)
+            println!("({:?},{:?},{:?}),({:?},{:?})",vec,acc,in_seq,i,rank);
+            (vec,local,in_seq)
         }
     ).0;
 
