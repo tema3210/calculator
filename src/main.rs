@@ -203,29 +203,64 @@ enum TreeNode {
     WithChilds{data: Option<char>, children: Option<TreeLeaf>},
 }
 
-fn parse(tokens: Vec<Token>) -> Result<TreeNode,AppError> {
+fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
     use Token::*;
     let sz = tokens.len();
+    let mut brace_count = 0; //count of brace pairs
     let mut acc = 0isize;
-    let tokens = tokens.into_iter().try_fold(Vec::with_capacity(sz),|mut vec,it| {
+
+    //SOA ed ranks of tokens
+    let tokens_ranks = tokens.iter().try_fold(Vec::with_capacity(sz),|mut vec,it| {
         let mut flag = false;
         match it {
             Brace{lhs: true} => {
                 acc+=1;
+                brace_count+=1;
             },
             Brace{lhs: false} => {
                 flag = true;
             },
             _ => {}
         };
-        let ret = (acc,it);
+        let ret = acc;
         if flag {acc-=1};
         if acc < 0 {return Err(AppError::ParseError("Bad brace formation".to_string()))};
         vec.push(ret);
         Ok(vec)
-    })?;
+    })?.into_boxed_slice();
     if acc != 0 {return Err(AppError::ParseError("Bad brace formation".to_string()))};
+
+
+    #[derive(Clone)]
+    enum Partial {
+        Tok(Token),
+        Dat(TreeNode),
+    }
+
+    let braces_indices = tokens_ranks.into_iter().fold(
+        (Vec::with_capacity(brace_count),(None,None)),
+        |(mut vec,acc), &rank| {
+            let mut local = match rank {
+                x if x > 0 && acc.0.is_some() => {
+                    (acc.0,Some(x))
+                },
+                x if x > 0 && acc.0.is_none() => {
+                    (Some(x),acc.1)
+                },
+                _ => {acc},
+            };
+            if let (Some(start),Some(end)) = acc {
+                vec.push((start,end));
+                local = (None,None);
+            };
+            (vec,local)
+        }
+    ).0;
+
     println!("{:?}",tokens);
+    println!("{:?}",tokens_ranks);
+    println!("{:?}",braces_indices);
+
 
     Err(AppError::ParseError("Not implemented".to_string()))
 }
@@ -302,7 +337,7 @@ fn eval(tree: TreeNode) -> Result<f64,AppError> {
 
 fn perform(inp: String) -> Result<f64,AppError> {
     let tokens = lexer(inp)?;
-    let tree = parse(tokens)?;
+    let tree = parse(&tokens)?;
     eval(tree)
 }
 fn main() {
