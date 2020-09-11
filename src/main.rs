@@ -241,7 +241,6 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
         let (mut vec,acc,_) = tokens_ranks.iter().enumerate().fold(
             (Vec::with_capacity(brace_count),(None,None),false),
             |(mut vec,acc,mut in_seq), (i,&rank)| {
-                println!("({:?},{:?},{:?}),({:?},{:?})",vec,acc,in_seq,i,rank);
                 let local = match rank {
                     x if x > 0 && acc.0.is_some() && in_seq => {
                         (acc.0,Some(i))
