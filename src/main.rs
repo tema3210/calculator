@@ -237,29 +237,38 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
         Dat(TreeNode),
     }
 
-    let braces_indices = tokens_ranks.iter().enumerate().fold(
-        (Vec::with_capacity(brace_count),(None,None),false),
-        |(mut vec,acc,mut in_seq), (i,&rank)| {
-            let mut local = match rank {
-                x if x > 0 && acc.0.is_some() && in_seq => {
-                    (acc.0,Some(i))
-                },
-                x if x > 0 && acc.0.is_none() => {
-                    in_seq=true;
-                    (Some(i),acc.1)
-                },
-                _ => {in_seq=false;acc},
-            };
-            if let (Some(start),Some(end)) = acc {
-                if in_seq {
-                    vec.push((start,end));
-                    local = (None,None);
+    let braces_indices = {
+        let (mut vec,acc,_) = tokens_ranks.iter().enumerate().fold(
+            (Vec::with_capacity(brace_count),(None,None),false),
+            |(mut vec,acc,mut in_seq), (i,&rank)| {
+                println!("({:?},{:?},{:?}),({:?},{:?})",vec,acc,in_seq,i,rank);
+                let local = match rank {
+                    x if x > 0 && acc.0.is_some() && in_seq => {
+                        (acc.0,Some(i))
+                    },
+                    x if x > 0 && acc.0.is_none() => {
+                        in_seq=true;
+                        (Some(i),acc.1)
+                    },
+                    _ => {
+                        let ret = if let (Some(start),Some(end)) = acc {
+                            vec.push((start,end));
+                            (None,None)
+                        } else {
+                            acc
+                        };
+                        in_seq=false;
+                        ret
+                    },
                 };
-            };
-            println!("({:?},{:?},{:?}),({:?},{:?})",vec,acc,in_seq,i,rank);
-            (vec,local,in_seq)
-        }
-    ).0;
+                (vec,local,in_seq)
+            }
+        );
+        if let (Some(l),Some(r)) = acc {
+            vec.push((l,r))
+        };
+        vec
+    };
 
     println!("{:?}",tokens);
     println!("{:?}",tokens_ranks);
