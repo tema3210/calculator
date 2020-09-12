@@ -214,16 +214,16 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
         let mut flag = false;
         match it {
             Brace{lhs: true} => {
-                acc+=1;
+                flag = true;
                 brace_count+=1;
             },
             Brace{lhs: false} => {
-                flag = true;
+                acc-=1;
             },
             _ => {}
         };
         let ret = acc;
-        if flag {acc-=1};
+        if flag {acc+=1};
         if acc < 0 {return Err(AppError::ParseError("Bad brace formation".to_string()))};
         vec.push(ret);
         Ok(vec)
@@ -232,8 +232,8 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
 
 
     #[derive(Clone)]
-    enum Partial {
-        Tok(Token),
+    enum Partial<'a> {
+        Tok(&'a Token),
         Dat(TreeNode),
     }
 
@@ -272,6 +272,37 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
     println!("{:?}",tokens);
     println!("{:?}",tokens_ranks);
     println!("{:?}",braces_indices);
+
+    let _res = tokens.iter().enumerate().try_fold(
+        (braces_indices.iter().peekable(),Vec::new(),None),
+        |(mut braces,mut res,mut node),(ind,tok)| {
+            if let Some((left,right)) = braces.peek() {
+                match (ind > *left,ind > *right){
+                    (true,false) => {
+                        if matches!(node,None) {
+                            node = Some(parse(&tokens[*left..*right])?)
+                        }
+                    },
+                    (true,true) => {
+                        braces.next();
+                        res.push(Partial::Dat(node.unwrap()));
+                        node = None;
+                    },
+                    (false,false) => {
+                        res.push(Partial::Tok(tok));
+                    },
+                    _ => {
+                        unreachable!()
+                    },
+                }
+            } else {
+                res.push(Partial::Tok(tok))
+            };
+            Ok((braces,res,node))
+        }
+    )?.1;
+
+
 
 
     Err(AppError::ParseError("Not implemented".to_string()))
