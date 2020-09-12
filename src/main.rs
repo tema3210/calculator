@@ -231,10 +231,11 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
     if acc != 0 {return Err(AppError::ParseError("Bad brace formation".to_string()))};
 
 
-    #[derive(Clone)]
+    #[derive(Clone,Debug)]
     enum Partial<'a> {
         Tok(&'a Token),
         Dat(TreeNode),
+        Brace,
     }
 
     let braces_indices = {
@@ -269,11 +270,11 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
         vec
     };
 
-    println!("{:?}",tokens);
-    println!("{:?}",tokens_ranks);
-    println!("{:?}",braces_indices);
+    // println!("{:?}",tokens);
+    // println!("{:?}",tokens_ranks);
+    // println!("{:?}",braces_indices);
 
-    let _res = tokens.iter().enumerate().try_fold(
+    let mut res = tokens.iter().enumerate().try_fold(
         (braces_indices.iter().peekable(),Vec::new(),None),
         |(mut braces,mut res,mut node),(ind,tok)| {
             if let Some((left,right)) = braces.peek() {
@@ -302,6 +303,12 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
         }
     )?.1;
 
+    res.iter_mut().for_each(|it|{
+        if matches!(it,Partial::Tok(Token::Brace{lhs: _})) {
+            *it = Partial::Brace;
+        };
+    });
+    println!("{:?}",res);
 
 
 
