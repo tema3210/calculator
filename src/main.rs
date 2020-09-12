@@ -280,7 +280,7 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
                 match (ind > *left,ind > *right){
                     (true,false) => {
                         if matches!(node,None) {
-                            node = Some(parse(&tokens[*left..*right])?)
+                            node = Some(parse(&tokens[*left..=*right])?)
                         }
                     },
                     (true,true) => {
@@ -292,9 +292,9 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
                         res.push(Partial::Tok(tok));
                     },
                     _ => {
-                        unreachable!()
+                        return Err(AppError::ParseError("Found wrong brace indice".to_string()))
                     },
-                }
+                };
             } else {
                 res.push(Partial::Tok(tok))
             };
