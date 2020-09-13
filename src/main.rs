@@ -209,22 +209,28 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
     let mut brace_count = 0; //count of brace pairs
     let mut acc = 0isize;
 
+    #[derive(Debug,Clone,Copy)]
+    enum Rank{
+        Rank(isize),
+        Brace{lhs: bool},
+    }
     //SOA ed ranks of tokens
     let tokens_ranks = tokens.iter().try_fold(Vec::with_capacity(sz),|mut vec,it| {
-        let mut flag = false;
-        match it {
+        let ret = match it {
             Brace{lhs: true} => {
-                flag = true;
+                acc+=1;
                 brace_count+=1;
+                Rank::Brace{lhs: true}
             },
             Brace{lhs: false} => {
                 acc-=1;
+                if acc < 0 {return Err(AppError::ParseError("Bad brace formation".to_string()))};
+                Rank::Brace{lhs: false}
             },
-            _ => {}
+            _ => {
+                Rank::Rank(acc)
+            }
         };
-        let ret = acc;
-        if flag {acc+=1};
-        if acc < 0 {return Err(AppError::ParseError("Bad brace formation".to_string()))};
         vec.push(ret);
         Ok(vec)
     })?.into_boxed_slice();
@@ -235,7 +241,8 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
     enum Partial<'a> {
         Tok(&'a Token),
         Dat(TreeNode),
-        Brace,
+        BraceLeft,
+        BraceRight,
     }
 
     let braces_indices = {
@@ -243,14 +250,14 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
             (Vec::with_capacity(brace_count),(None,None),false),
             |(mut vec,acc,mut in_seq), (i,&rank)| {
                 let local = match rank {
-                    x if x > 0 && acc.0.is_some() && in_seq => {
+                    Rank::Rank(x) if x > 0 && acc.0.is_some() && in_seq => {
                         (acc.0,Some(i))
                     },
-                    x if x > 0 && acc.0.is_none() => {
+                    Rank::Rank(x) if x > 0 && acc.0.is_none() => {
                         in_seq=true;
                         (Some(i),acc.1)
                     },
-                    _ => {
+                    Rank::Rank(_) => {
                         let ret = if let (Some(start),Some(end)) = acc {
                             vec.push((start,end));
                             (None,None)
@@ -260,6 +267,9 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
                         in_seq=false;
                         ret
                     },
+                    _ => {
+                        acc
+                    }
                 };
                 (vec,local,in_seq)
             }
@@ -270,15 +280,14 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
         vec
     };
 
-    // println!("{:?}",tokens);
-    // println!("{:?}",tokens_ranks);
-    // println!("{:?}",braces_indices);
+    println!("\ninput: {:?}\nranks: {:?}\nindices: {:?}",tokens,tokens_ranks,braces_indices);
+
 
     let mut res = tokens.iter().enumerate().try_fold(
         (braces_indices.iter().peekable(),Vec::new(),None),
         |(mut braces,mut res,mut node),(ind,tok)| {
             if let Some((left,right)) = braces.peek() {
-                match (ind > *left,ind > *right){
+                match (ind >= *left,ind >= *right){
                     (true,false) => {
                         if matches!(node,None) {
                             node = Some(parse(&tokens[*left..=*right])?)
@@ -286,33 +295,53 @@ fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
                     },
                     (true,true) => {
                         braces.next();
-                        res.push(Partial::Dat(node.unwrap()));
-                        node = None;
+                        res.push(Partial::Dat(node.take().unwrap()));
                     },
                     (false,false) => {
-                        res.push(Partial::Tok(tok));
+                        res.push(
+                            match tok {
+                                Token::Brace{lhs: x} => {
+                                    if *x {Partial::BraceLeft} else { Partial::BraceRight }
+                                }, //filter out braces
+                                _ => {
+                                    Partial::Tok(tok)
+                                }
+                            }
+                        );
                     },
                     _ => {
                         return Err(AppError::ParseError("Found wrong brace indice".to_string()))
                     },
                 };
             } else {
-                res.push(Partial::Tok(tok))
+                res.push(
+                    match tok {
+                        Token::Brace{lhs: x} => {
+                            if *x {Partial::BraceLeft} else { Partial::BraceRight }
+                        }, //filter out braces
+                        _ => {
+                            Partial::Tok(tok)
+                        }
+                    }
+                );
             };
             Ok((braces,res,node))
         }
     )?.1;
 
-    res.iter_mut().for_each(|it|{
-        if matches!(it,Partial::Tok(Token::Brace{lhs: _})) {
-            *it = Partial::Brace;
-        };
-    });
+    // res.iter_mut().for_each(|it|{
+    //     match it {
+    //         Partial::Tok(Token::Brace{lhs: x}) => {
+    //             *it = if *x {Partial::BraceLeft} else {Partial::BraceRight};
+    //         },
+    //         _ => {}
+    //     };
+    // });
     println!("{:?}",res);
 
 
-
-    Err(AppError::ParseError("Not implemented".to_string()))
+    Ok(TreeNode::Ending{data: Some(TreeData::Num(1.0))})
+    // Err(AppError::ParseError("Not implemented".to_string()))
 }
 
 fn eval(tree: TreeNode) -> Result<f64,AppError> {
@@ -386,6 +415,7 @@ fn eval(tree: TreeNode) -> Result<f64,AppError> {
 
 
 fn perform(inp: String) -> Result<f64,AppError> {
+    println!("{}",&inp);
     let tokens = lexer(inp)?;
     let tree = parse(&tokens)?;
     eval(tree)
