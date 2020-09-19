@@ -9,3 +9,11 @@ edition = "2018"
 [dependencies]
 iced = "0.1.1"
 iced_native = "0.2.2"
+
+[lib]
+name = "calc"
+path = "src/lib.rs"
+
+[[bin]]
+name = "calc"
+path = "src/main.rs"
