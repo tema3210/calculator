@@ -14,7 +14,7 @@ pub(crate) struct Calculator {
 
 impl iced::Application for Calculator {
     type Executor = iced::executor::Default;
-    type Message = calc::Msg;
+    type Message = crate::Msg;
     type Flags = ();
 
     fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>){
@@ -26,11 +26,11 @@ impl iced::Application for Calculator {
     }
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
-        use calc::Msg::*;
+        use crate::Msg::*;
         match message {
             EnterPressed => {
                 let cl = self.out.clone();
-                Command::perform(async move { calc::perform(cl) },|res| {
+                Command::perform(async move { crate::perform(cl) },|res| {
                     match res {
                         Ok(num) => {
                             Self::Message::Output(num.to_string())

@@ -1,3 +1,7 @@
+#![feature(generators,generator_trait)]
+
+pub(crate) mod app;
+
 #[derive(Debug,Clone)]
 pub enum Msg {
     EnterPressed,
@@ -37,6 +41,7 @@ pub(crate) enum TreeNode {
     Ending{data: Option<TreeData>},
     WithChilds{data: Option<char>, children: Option<TreeLeaf>},
 }
+
 
 mod job;
 pub fn perform(inp: String) -> Result<f64,AppError> {

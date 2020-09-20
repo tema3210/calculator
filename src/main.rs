@@ -1,9 +1,7 @@
 use iced::Settings;
 use iced::Application;
 
-mod app;
-use crate::app::*;
-
+use calc;
 fn main() {
-    Calculator::run(Settings::default());
+    calc::app::Calculator::run(Settings::default());
 }
