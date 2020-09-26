@@ -1,4 +1,5 @@
 // use std::pin::Pin;
+use core::pin::Pin;
 use crate::*;
 
 pub(crate) fn lexer(inp: String) -> Result<Vec<Token>,AppError>{
@@ -75,27 +76,26 @@ pub(crate) fn lexer(inp: String) -> Result<Vec<Token>,AppError>{
     }).map(|mut ok| {Vec::shrink_to_fit(&mut ok);ok})
 }
 
-fn lexer2<'a>(input: &'a str) -> impl Iterator<Item = Token> {
-
-    let gen = |token: Option<char>| {
-
-            let op_pred = |ch: char| -> bool {
-                ['+','-','*','/','^'].iter().position(|&c| c == ch).is_some()
-            };
-            let brace_pred = |ch: char| -> bool {
-                if ch == '(' || ch == ')' { true } else { false }
-            };
-
-            //number before dot, number after dot, position of dot?, presence of number?
-            let mut num_state: (f64,f64,Option<i32>,bool) = (0.0,0.0,None,false);
-            let dump_numb = |state: (f64,f64,Option<i32>,bool)| -> f64 {
-                if let Some(shift) = state.2 {
-                    state.0 + state.1 * 10.0f64.powi(-shift)
-                } else {
-                    state.0
-                }
-            };
-            loop {
+fn lexer3(input: &str) -> impl Iterator<Item = Token> + '_ {
+    let mut gen = Box::pin(|tok: Option<Option<char>>| {
+        let op_pred = |ch: char| -> bool {
+            ['+','-','*','/','^'].iter().position(|&c| c == ch).is_some()
+        };
+        let brace_pred = |ch: char| -> bool {
+            if ch == '(' || ch == ')' { true } else { false }
+        };
+        //number before dot, number after dot, position of dot?, presence of number?
+        let mut num_state: (f64,f64,Option<i32>,bool) = (0.0,0.0,None,false);
+        let dump_numb = |state: (f64,f64,Option<i32>,bool)| -> f64 {
+            if let Some(shift) = state.2 {
+                state.0 + state.1 * 10.0f64.powi(-shift)
+            } else {
+                state.0
+            }
+        };
+        //main logic
+        loop {
+            if let Some(token) = tok {
                 match token {
                     Some(ch) if op_pred(ch) => {
                         if num_state.3 {
@@ -148,13 +148,38 @@ fn lexer2<'a>(input: &'a str) -> impl Iterator<Item = Token> {
                             //ret.push(Token::Num(dump_numb(num_state)));
                             yield (Some(Token::Num(dump_numb(num_state))),false);
                         }
-                        break Ok(());
+                        break Ok("done");
                     }
                 }
-            }?;
-
-            Ok(())
+            } else {
+                break Ok("Terminated")
+            }
+        }
+    });
+    use std::ops::Generator;
+    use std::ops::GeneratorState;
+    struct Inner<'a,G: Generator<Option<Option<char>>>> {
+        item: Pin<Box<G>>,
+        ret: Option<(Option<Token>,bool)>
+        s: std::str::Chars<'a>,
     };
-    let mut gen = Box::pin(gen);
+    impl<G: Generator<Option<Option<char>>>> Iterator for Inner<'_, G> {
+        type Item = Token;
 
+        fn next(&mut self)->Option<Token> {
+            if self.ret.is_none() {
+                let gret = self.item.as_mut().resume(Some(self.s.next()));
+                match gret {
+                    GeneratorState::Yielded((mb_tok,advance)) => {
+
+                    },
+                    GeneratorState::Complete(desc) => {
+
+                    },
+                };
+            };
+
+        }
+    };
+    Inner{ item: gen, s: input.chars(),ret: None }
 }
