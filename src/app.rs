@@ -64,6 +64,10 @@ impl iced::Application for Calculator {
                 .size(15) //px
             )
             .push(
+                Text::new("Lexems are separated by the space, so don't expect things like \"9 + - 10 - - 0\" to be processed correctly ")
+                .size(15) //px
+            )
+            .push(
                 Row::new()
                     .push(
                         text_input::TextInput::new(&mut self.txt_st,"",&self.out,

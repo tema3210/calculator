@@ -29,12 +29,6 @@ pub(crate) fn lexer(inp: String) -> Result<Vec<Token>,AppError>{
         loop {
             match it.next() {
                 Some(ch) if op_pred(ch) => {
-                    // if num_state.3 {
-                    //     ret.push(Token::Num(dump_numb(num_state)));
-                    //     num_state = (0.0,0.0,None,false,false);
-                    // }
-                    // ret.push(Token::Op(ch));
-
                     //is in number? is number negative?
                     match (num_state.3,num_state.4) {
                         (true,_) => {
@@ -51,8 +45,10 @@ pub(crate) fn lexer(inp: String) -> Result<Vec<Token>,AppError>{
                                     num_state.4 = true;
                                     num_state.3 = true;
                                 },
-                                _ => {},
-                            }
+                                _ => {
+                                    ret.push(Token::Op(ch));
+                                },
+                            };
                         }
                     }
                 },
@@ -98,4 +94,23 @@ pub(crate) fn lexer(inp: String) -> Result<Vec<Token>,AppError>{
         acc.append(&mut subber(it)?);
         Ok(acc)
     }).map(|mut ok| {Vec::shrink_to_fit(&mut ok);ok})
+}
+
+#[cfg(test)]
+mod lexer_tests {
+    use crate::job::lex::lexer;
+
+    #[test]
+    fn t_01(){
+        println!("{:?}", lexer("( -90 * 7 ) + 5 / 1 - 8^(12 - 2)".into()) );
+    }
+
+    #[test]
+    fn t_02(){
+        println!("{:?}", lexer("( -90 * 7 ) + 5 / 1 - 8^(12 - -2)".into()));
+    }
+    #[test]
+    fn t_03() {
+        println!("{:?}", lexer("( -90 * -7 ) + 5 / -1 - 8^-2".into()) );
+    }
 }
