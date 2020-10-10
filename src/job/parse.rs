@@ -1,61 +1,83 @@
 use crate::*;
 
 pub(crate) fn parse(tokens: &[Token]) -> Result<TreeNode,AppError> {
-    use Token::*;
-    let sz = tokens.len();
-    let mut brace_count = 0; //count of brace pairs
+    Err(AppError::ParseError("Not implemented".into()))
+}
+
+fn parse1(toks: &[Token])-> Result<TreeNode,AppError> {
+    let mut ops: Vec<_> = toks.iter().enumerate().filter_map(|(ind,it)| {
+        match it {
+            Token::Op(ch) => {
+                match ch {
+                    '*' | '/' => Some((1,ind)),
+                    '+' | '-' => Some((3,ind)),
+                    '^' => Some((2,ind)),
+                    _ => panic!("Bad op found"),
+                }
+            },
+            _ => None,
+        }
+    }).collect();
+    ops.sort_by(|(r1,_),(r2,_)| r1.cmp(r2).reverse());
+
+
+
+    return Err(AppError::ParseError("Not implemented".into()));
+}
+
+#[derive(Eq,PartialEq)]
+enum OpKind {
+    Multiplicative,
+    Additive,
+    Power,
+}
+#[derive(Eq)]
+struct OpPrior(isize,usize,OpKind);
+
+impl std::cmp::PartialEq<OpPrior> for OpPrior {
+    fn eq(&self, rhs: &OpPrior) -> bool {
+         self.0 == rhs.0 && self.1 == rhs.1
+    }
+}
+impl std::cmp::Ord for OpPrior {
+    fn cmp(&self, rhs: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(rhs).unwrap()
+    }
+}
+impl std::cmp::PartialOrd<OpPrior> for OpPrior {
+    fn partial_cmp(&self, rhs: &OpPrior) -> std::option::Option<std::cmp::Ordering> {
+        //self to rhs comparison
+        if self.0 == rhs.0 {
+            Some(self.1.cmp(&rhs.1))
+        } else {
+            Some(self.0.cmp(&rhs.0))
+        }
+    }
+}
+fn parse2(toks: &[Token])-> Result<TreeNode,AppError> {
+
+    let len = toks.len();
     let mut acc = 0isize;
-
-    println!("tokens: {:?}\n",tokens);
-
-    #[derive(Debug,Clone,Copy)]
-    enum Rank {
-        Rank(isize),
-        Brace{lhs: bool},
-    }
-
-    let storage = |i: usize,store: &mut ()| -> (Option<usize>,Option<usize>) {
-
-        (None,None)
-    };
-
-    let tokens_ranks = tokens.iter().enumerate().try_fold((Vec::with_capacity(sz),()),|(mut vec,store),(ind,it)| {
-        let ret = match it {
-            Brace{lhs: true} => {
-                acc+=1;
-                brace_count+=1;
-                Rank::Brace{lhs: true}
-            },
-            Brace{lhs: false} => {
-                acc-=1;
-                if acc < 0 {return Err(AppError::ParseError("Bad brace formation".to_string()))};
-                Rank::Brace{lhs: false}
-            },
-            _ => {
-                Rank::Rank(acc)
+    let mut ops_p = toks.iter().enumerate().filter_map(|(ind,it)| {
+        match it {
+            Token::Brace{lhs: true} => {acc+=1;None},
+            Token::Brace{lhs: false} => {acc-=1;None},
+            Token::Op(ch) => {
+                let kind = match ch {
+                    '*' | '/' => OpKind::Multiplicative,
+                    '+' | '-' => OpKind::Additive,
+                    '^' => OpKind::Power,
+                    _ => unreachable!("Bad op found"),
+                };
+                Some(OpPrior(acc,ind,kind))
             }
-        };
-        vec.push(ret);
-        Ok((vec,store))
-    })?.0.into_boxed_slice();
-    if acc != 0 {return Err(AppError::ParseError("Bad brace formation".to_string()))};
+            _ => None,
+        }
+    }).collect::<Vec<_>>();
+    if acc != 0 {return Err(AppError::ParseError("Ill formed braces".into()));};
+    ops_p.sort();
 
-    println!("ranks: {:?}\n",tokens_ranks);
 
-    #[derive(Clone,Debug)]
-    enum Partial<'a> {
-        Tok(&'a Token),
-        Dat(TreeNode),
-        BraceLeft,
-        BraceRight,
-    }
 
-    let braces_indices = {
-
-    };
-
-    println!("indices: {:?}\n",braces_indices);
-
-    Ok(TreeNode::Ending{data: Some(TreeData::Num(1.0))})
-    // Err(AppError::ParseError("Not implemented".to_string()))
+    return Err(AppError::ParseError("Not implemented".into()));
 }

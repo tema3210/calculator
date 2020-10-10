@@ -3,7 +3,7 @@ use crate::*;
 pub(crate) fn lexer(inp: String) -> Result<Vec<Token>,AppError>{
     let subber = |item: &str| -> Result<Vec<Token>,AppError> {
         let mut ret = Vec::new();
-        let mut it = item.chars();
+        let mut it = item.chars().peekable();
 
         let op_pred = |ch: char| -> bool {
             ['+','-','*','/','^'].iter().position(|&c| c == ch).is_some()
@@ -12,28 +12,54 @@ pub(crate) fn lexer(inp: String) -> Result<Vec<Token>,AppError>{
             if ch == '(' || ch == ')' { true } else { false }
         };
 
-        //number before dot, number after dot, position of dot?, presence of number?
-        let mut num_state: (f64,f64,Option<i32>,bool) = (0.0,0.0,None,false);
-        let dump_numb = |state: (f64,f64,Option<i32>,bool)| -> f64 {
-            if let Some(shift) = state.2 {
+        //number before dot, number after dot, position of dot?, presence of number?,is negative?
+        let mut num_state: (f64,f64,Option<i32>,bool,bool) = (0.0,0.0,None,false,false);
+
+        // let mut op_cache: Option<char> = None;
+
+        let dump_numb = |state: (f64,f64,Option<i32>,bool,bool)| -> f64 {
+            let sgn: f64 = if state.4 { -1.0 } else { 1.0 };
+            let ret = if let Some(shift) = state.2 {
                 state.0 + state.1 * 10.0f64.powi(-shift)
             } else {
                 state.0
-            }
+            };
+            ret * sgn
         };
         loop {
             match it.next() {
                 Some(ch) if op_pred(ch) => {
-                    if num_state.3 {
-                        ret.push(Token::Num(dump_numb(num_state)));
-                        num_state = (0.0,0.0,None,false);
+                    // if num_state.3 {
+                    //     ret.push(Token::Num(dump_numb(num_state)));
+                    //     num_state = (0.0,0.0,None,false,false);
+                    // }
+                    // ret.push(Token::Op(ch));
+
+                    //is in number? is number negative?
+                    match (num_state.3,num_state.4) {
+                        (true,_) => {
+                            ret.push(Token::Num(dump_numb(num_state)));
+                            num_state = (0.0,0.0,None,false,false);
+                            ret.push(Token::Op(ch));
+                        },
+                        (false,true) => {
+                            unreachable!("negative flag outside of number")
+                        },
+                        (false,false) => {
+                            match it.peek() {
+                                Some(ch) if ch.is_digit(10) => {
+                                    num_state.4 = true;
+                                    num_state.3 = true;
+                                },
+                                _ => {},
+                            }
+                        }
                     }
-                    ret.push(Token::Op(ch));
                 },
                 Some(ch) if brace_pred(ch) => {
                     if num_state.3 {
                         ret.push(Token::Num(dump_numb(num_state)));
-                        num_state = (0.0,0.0,None,false);
+                        num_state = (0.0,0.0,None,false,false);
                     }
                     ret.push(Token::Brace{lhs: ch == '('});
                 },
