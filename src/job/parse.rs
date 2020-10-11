@@ -36,7 +36,7 @@ struct OpPrior(isize,usize,OpKind);
 
 impl std::cmp::PartialEq<OpPrior> for OpPrior {
     fn eq(&self, rhs: &OpPrior) -> bool {
-         self.0 == rhs.0 && self.1 == rhs.1
+         self.0 == rhs.0 && self.1 == rhs.1 && self.2 == rhs.2
     }
 }
 impl std::cmp::Ord for OpPrior {
@@ -45,7 +45,7 @@ impl std::cmp::Ord for OpPrior {
     }
 }
 impl std::cmp::PartialOrd<OpPrior> for OpPrior {
-    fn partial_cmp(&self, rhs: &OpPrior) -> std::option::Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, rhs: &OpPrior) -> Option<std::cmp::Ordering> {
         //self to rhs comparison
         if self.0 == rhs.0 {
             Some(self.1.cmp(&rhs.1))
@@ -54,6 +54,7 @@ impl std::cmp::PartialOrd<OpPrior> for OpPrior {
         }
     }
 }
+
 fn parse2(toks: &[Token])-> Result<TreeNode,AppError> {
 
     let len = toks.len();
