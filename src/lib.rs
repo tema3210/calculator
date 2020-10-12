@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 #[derive(Debug,Clone)]
 pub enum Msg {
     EnterPressed,
@@ -8,10 +10,10 @@ pub enum Msg {
 
 #[derive(Debug)]
 pub enum AppError {
-    ParseError(String),
-    EvalError(String),
-    LexError(String),
-    Test(String),
+    ParseError(Cow<'static,str>),
+    EvalError(Cow<'static,str>),
+    LexError(Cow<'static,str>),
+    Test(Cow<'static,str>),
 }
 
 //9bytes at most
@@ -23,19 +25,9 @@ pub(crate) enum Token {
 }
 
 #[derive(Debug,Clone)]
-pub(crate) enum TreeData {
-    Op(char),
-    Num(f64),
-}
-#[derive(Debug,Clone)]
-pub(crate) enum TreeLeaf {
-    Unary(Box<TreeNode>),
-    Binary{left: Box<TreeNode>, right: Box<TreeNode>}
-}
-#[derive(Debug,Clone)]
 pub(crate) enum TreeNode {
-    Ending{data: Option<TreeData>},
-    WithChilds{data: Option<char>, children: Option<TreeLeaf>},
+    Ending(Option<f64>),
+    WithChilds{data: Option<char>, children: Option<Box<(TreeNode,TreeNode)>>},
 }
 
 mod job;

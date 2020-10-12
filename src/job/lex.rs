@@ -69,15 +69,15 @@ pub(crate) fn lexer(inp: &str) -> Result<Vec<Token>,AppError>{
                     }
                 },
                 Some('.') => {
-                    if num_state.3 == false {break Err(AppError::LexError("Found dot outside of number".to_string()))};
+                    if num_state.3 == false {break Err(AppError::LexError("Found dot outside of number".into()))};
                     if num_state.2.is_some() {
-                        break Err(AppError::LexError("Found number with 2 dots".to_string()))
+                        break Err(AppError::LexError("Found number with 2 dots".into()))
                     } else {
                         num_state.2 = Some(0)
                     }
                 },
                 Some(_) => {
-                    break Err(AppError::LexError("Found improcessable char".to_string()))
+                    break Err(AppError::LexError("Found improcessable char".into()))
                 },
                 None => {
                     if num_state.3 {
