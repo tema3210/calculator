@@ -30,6 +30,21 @@ pub(crate) enum TreeNode {
     WithChilds{data: Option<char>, children: Option<Box<(TreeNode,TreeNode)>>},
 }
 
+impl TreeNode {
+    fn from_f64(t: f64) -> Self {
+        TreeNode::Ending(Some(t))
+    }
+    fn from_op(ch: char) -> Self {
+        TreeNode::WithChilds{data: Some(ch), children: None}
+    }
+    fn push_chidren(&mut self,children: Box<(TreeNode,TreeNode)>) -> bool{
+        match self {
+            Self::Ending(_) => false,
+            Self::WithChilds{data: _,children: ref mut ch} => {*ch = Some(children); true},
+        }
+    }
+}
+
 mod job;
 pub fn perform(inp: String) -> Result<f64,AppError> {
     use job::*;
