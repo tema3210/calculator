@@ -1,5 +1,6 @@
 use crate::*;
 
+#[inline]
 pub(crate) fn lexer(inp: &str) -> Result<Vec<Token>,AppError>{
     let subber = |item: &str| -> Result<Vec<Token>,AppError> {
         let mut ret = Vec::new();

@@ -51,6 +51,6 @@ pub fn perform(inp: String) -> Result<f64,AppError> {
 
     println!("{}",&inp);
     let tokens = lex::lexer(&inp)?;
-    let tree = parse::parse(&tokens)?;
+    let tree = parse::parse(tokens)?;
     eval::eval(tree)
 }
