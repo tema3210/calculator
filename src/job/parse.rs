@@ -2,7 +2,7 @@ use crate::*;
 
 #[inline]
 pub(crate) fn parse(tokens: Vec<Token>) -> Result<TreeNode,AppError> {
-    Err(AppError::ParseError("Not implemented".into()))
+    parse4(&tokens)
 }
 
 
@@ -12,14 +12,24 @@ enum TokenExtended {
     Node(TreeNode),
 }
 
-fn promote_to_extended_tokens(toks: Vec<Token>,parse_fn: impl Fn(&[Token])->Result<TreeNode,AppError>) -> Result<Vec<TokenExtended>,AppError> {
+
+fn parse4(toks: &[Token]) -> Result<TreeNode,AppError> {
+    let ext = promote_to_extended_tokens(toks, parse4)?;
+    form_node(&ext)
+}
+
+fn form_node(etoks: &[TokenExtended])->Result<TreeNode,AppError> {
+     unimplemented!()
+}
+
+fn promote_to_extended_tokens(toks: &[Token],parse_fn: impl Fn(&[Token])->Result<TreeNode,AppError>) -> Result<Vec<TokenExtended>,AppError> {
     //of braces
-    let ranges = process_braces(&toks)?;
+    let ranges = process_braces(toks)?;
     let mut ret = Vec::new();
 
     //current range of braces
     let mut curr_indice = 0;
-    //was it aleady inserted
+    //was it aleady inserted?
     let mut flag = false;
 
     for i in 0..toks.len() {
