@@ -2,7 +2,7 @@ use crate::*;
 
 #[inline]
 pub(crate) fn lexer(inp: &str) -> Result<Vec<Token>,AppError>{
-    let subber = |item: &str| -> Result<Vec<Token>,AppError> {
+    let subber = |item: &str, mut last_ended_with_number: bool| -> Result<Vec<Token>,AppError> {
         let mut ret = Vec::new();
         let mut it = item.chars().peekable();
 
@@ -40,16 +40,24 @@ pub(crate) fn lexer(inp: &str) -> Result<Vec<Token>,AppError>{
                         (false,true) => {
                             unreachable!("negative flag outside of number")
                         },
-                        (false,false) => {
-                            match it.peek() {
-                                Some(ch) if ch.is_digit(10) => {
-                                    num_state.4 = true;
-                                    num_state.3 = true;
-                                },
-                                _ => {
-                                    ret.push(Token::Op(ch));
-                                },
+                        (false,false) if ch == '-' => {
+                            if last_ended_with_number {
+                                ret.push(Token::Op(ch));
+                                last_ended_with_number = false;
+                            } else {
+                                match it.peek() {
+                                    Some(ch) if ch.is_digit(10) => {
+                                        num_state.4 = true;
+                                        num_state.3 = true;
+                                    },
+                                    _ => {
+                                        ret.push(Token::Op(ch));
+                                    },
+                                };
                             };
+                        },
+                        (false,false) => {
+                            ret.push(Token::Op(ch))
                         }
                     }
                 },
@@ -92,7 +100,12 @@ pub(crate) fn lexer(inp: &str) -> Result<Vec<Token>,AppError>{
         Ok(ret)
     };
     inp.split(' ').filter(|s| !s.is_empty()).try_fold(Vec::with_capacity(inp.len()/2),|mut acc,it|{
-        acc.append(&mut subber(it)?);
+        let flag = if let Some(item) = acc.last() {
+            matches!(item,Token::Num(_))
+        } else {
+            false
+        };
+        acc.append(&mut subber(it,flag)?);
         Ok(acc)
     }).map(|mut ok| {Vec::shrink_to_fit(&mut ok);ok})
 }
