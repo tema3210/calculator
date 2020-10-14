@@ -5,6 +5,7 @@ pub(crate) fn parse(tokens: Vec<Token>) -> Result<TreeNode,AppError> {
     Err(AppError::ParseError("Not implemented".into()))
 }
 
+
 fn process_braces(toks: &[Token]) -> Result<Vec<(usize,usize)>,AppError> {
     let mut res: (Vec<_>,isize,(Option<usize>,Option<usize>)) = toks.iter().enumerate().try_fold(
         (Vec::new(),0isize,(None,None)),
@@ -34,7 +35,16 @@ fn process_braces(toks: &[Token]) -> Result<Vec<(usize,usize)>,AppError> {
                         _ => unreachable!(),
                     };
                 },
-                _ => {},
+                _ => {
+                    if acc == 0 {
+                        curr_interval = if let (Some(lhs),Some(rhs)) = curr_interval {
+                            vec.push((lhs,rhs));
+                            (None,None)
+                        } else {
+                            curr_interval
+                        };
+                    };
+                },
             };
             Ok((vec,acc,curr_interval))
     }
@@ -50,8 +60,21 @@ fn process_braces(toks: &[Token]) -> Result<Vec<(usize,usize)>,AppError> {
 }
 
 #[cfg(test)]
-mod tests {
+mod parser_tests {
     use crate::job as T;
+
+    //This is helper
+    #[allow(unused)]
+    fn brace_indices(t: &[crate::Token]) -> Vec<usize> {
+        let mut ret = Vec::new();
+        for (i,el) in t.iter().enumerate() {
+            match el {
+                crate::Token::Brace{lhs: _} => ret.push(i),
+                _ => {},
+            }
+        };
+        ret
+    }
 
     #[test]
     fn t_01() {
@@ -70,5 +93,11 @@ mod tests {
         let toks = T::lex::lexer("(100^0.5)").unwrap();
         let br_res = T::parse::process_braces(&toks).unwrap();
         assert_eq!(br_res, vec![(0,4)]);
+    }
+    #[test]
+    fn t_04() {
+        let toks = T::lex::lexer("( 10 - 3 ) * 17 + (11-2) / (12 - 7)").unwrap();
+        let br_res = T::parse::process_braces(&toks).unwrap();
+        assert_eq!(br_res, vec![(0,4),(8,12),(14,18)]);
     }
 }
