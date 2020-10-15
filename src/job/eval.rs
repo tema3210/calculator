@@ -1,7 +1,6 @@
 use crate::*;
 
 pub(crate) fn eval_entry(tree: TreeNode) -> Result<f64,AppError> {
-    // println!("EVAL CALLED WITH:\n {:#?}",tree );
     eval(tree)
 }
 
