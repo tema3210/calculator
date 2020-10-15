@@ -48,8 +48,6 @@ impl TreeNode {
 mod job;
 pub fn perform(inp: String) -> Result<f64,AppError> {
     use job::*;
-
-    println!("{}",&inp);
     let tokens = lex::lexer(&inp)?;
     let tree = parse::parse(tokens)?;
     eval::eval(tree)
