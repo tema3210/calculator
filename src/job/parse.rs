@@ -130,9 +130,9 @@ fn process_braces(toks: &[Token]) -> Result<Vec<(usize,usize)>,AppError> {
                 Token::Brace{lhs: true} => {
                     acc+=1;
                     curr_interval = match curr_interval {
-                        (Some(lft),None) => {curr_interval},
-                        (None,Some(rht)) => {return Err(AppError::ParseError("Ill-formed braces".into()))},
-                        (Some(lft),Some(rht)) => {return Err(AppError::ParseError("Bad input".into()))},
+                        (Some(_),None) => {curr_interval},
+                        (None,Some(_)) => {return Err(AppError::ParseError("Ill-formed braces".into()))},
+                        (Some(_),Some(_)) => {return Err(AppError::ParseError("Bad input".into()))},
                         (None,None) => (Some(ind),None),
                     };
                 },
