@@ -5,13 +5,11 @@ pub(crate) fn parse(tokens: Vec<Token>) -> Result<TreeNode,AppError> {
     parse4(&tokens)
 }
 
-
 #[derive(Debug)]
 enum TokenExtended {
     Tok(Token),
     Node(TreeNode),
 }
-
 
 fn parse4(toks: &[Token]) -> Result<TreeNode,AppError> {
     let ext = promote_to_extended_tokens(toks, parse4)?;
@@ -19,7 +17,29 @@ fn parse4(toks: &[Token]) -> Result<TreeNode,AppError> {
 }
 
 fn form_node(etoks: &[TokenExtended])->Result<TreeNode,AppError> {
-     unimplemented!()
+    type It<'a> = &'a TokenExtended;
+
+    //TODO:
+    let cmp_closure = |left: It<'_>,right: It<'_>| {
+        std::cmp::Ordering::Equal
+    };
+
+    //FIX
+    if let Some((min,el)) = etoks.into_iter().enumerate().min_by(|(_,l),(_,r)| cmp_closure(l,r)) {
+        match el {
+            TokenExtended::Node(nod) => Ok(*nod),
+            TokenExtended::Tok(Token::Op(op)) => {
+                let mut ret = TreeNode::from_op(*op);
+                let ch = (form_node(&etoks[..min])?,form_node(&etoks[min+1..])?);
+                ret.push_chidren(Box::new(ch));
+                Ok(ret)
+            },
+            TokenExtended::Tok(Token::Num(num)) => Ok(TreeNode::from_f64(*num)),
+            TokenExtended::Tok(Token::Brace{lhs: _}) => unreachable!(),
+        }
+    } else {
+        Err(AppError::ParseError("Empty extended tokens found".into()))
+    }
 }
 
 fn promote_to_extended_tokens(toks: &[Token],parse_fn: impl Fn(&[Token])->Result<TreeNode,AppError>) -> Result<Vec<TokenExtended>,AppError> {

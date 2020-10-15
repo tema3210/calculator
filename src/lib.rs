@@ -30,7 +30,6 @@ pub(crate) enum TreeNode {
     WithChilds{data: Option<char>, children: Option<Box<(TreeNode,TreeNode)>>},
 }
 
-#[cfg(test)]
 impl TreeNode {
     fn from_f64(t: f64) -> Self {
         TreeNode::Ending(Some(t))
