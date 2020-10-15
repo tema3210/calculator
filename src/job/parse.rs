@@ -41,6 +41,16 @@ fn form_node(etoks: &[TokenExtended]) -> Result<TreeNode,AppError> {
             (Tok(Op(l)),Tok(Op(r)))
                 if is_in_group(ADDITIVE_OPS)(*l) && is_in_group(MULTIPLICATIVE_OPS)(*r) => Greater,
 
+            (Tok(Op(l)),Tok(Op(r)))
+                if is_in_group(POWER_OP)(*l) && is_in_group(ADDITIVE_OPS)(*r) => Less,
+            (Tok(Op(l)),Tok(Op(r)))
+                if is_in_group(POWER_OP)(*r) && is_in_group(ADDITIVE_OPS)(*l) => Greater,
+
+            (Tok(Op(l)),Tok(Op(r)))
+                if is_in_group(MULTIPLICATIVE_OPS)(*l) && is_in_group(POWER_OP)(*r) => Less,
+            (Tok(Op(l)),Tok(Op(r)))
+                if is_in_group(MULTIPLICATIVE_OPS)(*r) && is_in_group(POWER_OP)(*l) => Greater,
+
             (Tok(Num(_)),Tok(Op(_))) => Less,
             (Tok(Op(_)),Tok(Num(_))) => Greater,
 
