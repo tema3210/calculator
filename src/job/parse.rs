@@ -13,7 +13,7 @@ enum TokenExtended {
 
 fn parse4(toks: &[Token]) -> Result<TreeNode,AppError> {
     let ext = promote_to_extended_tokens(toks, parse4)?;
-    form_node(ext)
+    form_node(&ext)
 }
 
 #[inline]
@@ -23,7 +23,7 @@ fn is_in_group(arg: &[char]) -> impl Fn(char) -> bool + '_ {
     }
 }
 
-fn form_node(mut etoks: Vec<TokenExtended>) -> Result<TreeNode,AppError> {
+fn form_node(etoks: &[TokenExtended]) -> Result<TreeNode,AppError> {
 
     const ADDITIVE_OPS: &[char] = &['+','-'];
     const MULTIPLICATIVE_OPS: &[char] = &['*','/'];
@@ -53,27 +53,24 @@ fn form_node(mut etoks: Vec<TokenExtended>) -> Result<TreeNode,AppError> {
 
     //iter() doesn't borrow vec to the end of the method, only for the min search.
     if let Some((min,_)) = etoks.iter().enumerate().min_by(|(_,l),(_,r)| cmp_closure(l,r)) {
-        let (mut right,left) = (etoks.split_off(min),etoks);
-        let (curr,right) = (right.split_off(1),right);
-
-        let el: Option<TokenExtended> = match &*curr {
-            [el] => Some(el.clone()), //unnecessary clone, but it doens't work without it
+        let left = &etoks[0..min];
+        if let Some((curr,right)) = match &etoks[min..] {
+            [curr,ref right @ ..] => Some((curr,right)),
             _ => None,
-        };
-        if let Some(el) = el {
-            match el {
-                TokenExtended::Node(nod) => Ok(nod),
+        } {
+            match curr {
+                TokenExtended::Node(nod) => Ok(nod.clone()),
                 TokenExtended::Tok(Token::Op(op)) => {
-                    let mut ret = TreeNode::from_op(op);
+                    let mut ret = TreeNode::from_op(*op);
                     let ch = (form_node(left)?,form_node(right)?);
                     ret.push_chidren(Box::new(ch));
                     Ok(ret)
                 },
-                TokenExtended::Tok(Token::Num(num)) => Ok(TreeNode::from_f64(num)),
+                TokenExtended::Tok(Token::Num(num)) => Ok(TreeNode::from_f64(*num)),
                 TokenExtended::Tok(Token::Brace{lhs: _}) => unreachable!(),
             }
         } else {
-            Err(AppError::LexError("Could not split vec into 3 parts...".into()))
+            Err(AppError::LexError("".into()))
         }
     } else {
         Err(AppError::ParseError("Empty extended tokens found".into()))
