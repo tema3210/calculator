@@ -98,6 +98,9 @@ fn promote_to_extended_tokens(toks: &[Token],parse_fn: impl Fn(&[Token])->Result
     let mut flag = false;
 
     for i in 0..toks.len() {
+        
+        if curr_indice >= ranges.len() { continue; };
+
         let (left,right) = ranges[curr_indice];
 
         if i >= left && i <= right {
