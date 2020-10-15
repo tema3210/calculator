@@ -1,11 +1,16 @@
 use crate::*;
 
+pub(crate) fn eval_entry(tree: TreeNode) -> Result<f64,AppError> {
+    // println!("EVAL CALLED WITH:\n {:#?}",tree );
+    eval(tree)
+}
+
 pub(crate) fn eval(tree: TreeNode) -> Result<f64,AppError> {
     match tree {
         TreeNode::Ending(Some(num)) => Ok(num),
         TreeNode::Ending(None) => Err(AppError::EvalError("Ill formed ending".into())),
         TreeNode::WithChilds{data: Some(op),children: Some(ch)} => {
-            let (right,left) = *ch;
+            let (left,right) = *ch;
 
             let f = move |fst: f64,sec: f64| -> Result<f64,AppError> {
                 match op {

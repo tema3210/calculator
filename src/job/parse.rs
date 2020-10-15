@@ -36,33 +36,41 @@ fn form_node(etoks: &mut [TokenExtended]) -> Result<TreeNode,AppError> {
         use Token::*;
         use std::cmp::Ordering::*;
         match (left,right) {
-            (Tok(Op(l)),Tok(Op(r)))
-                if is_in_group(ADDITIVE_OPS)(*r) && is_in_group(MULTIPLICATIVE_OPS)(*l) => Less,
-            (Tok(Op(l)),Tok(Op(r)))
-                if is_in_group(ADDITIVE_OPS)(*l) && is_in_group(MULTIPLICATIVE_OPS)(*r) => Greater,
+            (Tok(Num(_)),Node(_)) => Equal,
+            (Node(_),Tok(Num(_))) => Equal,
 
-            (Tok(Op(l)),Tok(Op(r)))
-                if is_in_group(POWER_OP)(*l) && is_in_group(ADDITIVE_OPS)(*r) => Less,
-            (Tok(Op(l)),Tok(Op(r)))
-                if is_in_group(POWER_OP)(*r) && is_in_group(ADDITIVE_OPS)(*l) => Greater,
+            (Tok(Num(_)),_) => Greater,
+            (_,Tok(Num(_))) => Less,
 
-            (Tok(Op(l)),Tok(Op(r)))
-                if is_in_group(MULTIPLICATIVE_OPS)(*l) && is_in_group(POWER_OP)(*r) => Less,
-            (Tok(Op(l)),Tok(Op(r)))
-                if is_in_group(MULTIPLICATIVE_OPS)(*r) && is_in_group(POWER_OP)(*l) => Greater,
 
-            (Tok(Num(_)),Tok(Op(_))) => Less,
-            (Tok(Op(_)),Tok(Num(_))) => Greater,
+            //Less,Greater
 
-            (Node(_),Tok(Op(_))) => Greater,
-            (Tok(Op(_)),Node(_)) => Less,
+            //additive and multiplicative
+            (Tok(Op(l)),Tok(Op(r)))
+                if is_in_group(ADDITIVE_OPS)(*r) && is_in_group(MULTIPLICATIVE_OPS)(*l) => Greater,
+            (Tok(Op(l)),Tok(Op(r)))
+                if is_in_group(ADDITIVE_OPS)(*l) && is_in_group(MULTIPLICATIVE_OPS)(*r) => Less,
+
+            //additive and power op
+            (Tok(Op(l)),Tok(Op(r)))
+                if is_in_group(POWER_OP)(*l) && is_in_group(ADDITIVE_OPS)(*r) => Greater,
+            (Tok(Op(l)),Tok(Op(r)))
+                if is_in_group(POWER_OP)(*r) && is_in_group(ADDITIVE_OPS)(*l) => Less,
+
+            //power and multiplic.
+            (Tok(Op(l)),Tok(Op(r)))
+                if is_in_group(MULTIPLICATIVE_OPS)(*l) && is_in_group(POWER_OP)(*r) => Greater,
+            (Tok(Op(l)),Tok(Op(r)))
+                if is_in_group(MULTIPLICATIVE_OPS)(*r) && is_in_group(POWER_OP)(*l) => Less,
 
             (_,_) => Equal,
+
         }
     };
 
     //iter() doesn't borrow vec to the end of the method, only for the min search.
     if let Some((min,_)) = etoks.iter().enumerate().min_by(|(_,l),(_,r)| cmp_closure(l,r)) {
+        println!("next min: \n {:#?}",&etoks[min]);
         let (left,right) = etoks.split_at_mut(min);
         if let Some((curr,right)) = match right {
             [ref mut curr,ref mut right @ ..] => Some((curr,right)),
@@ -80,7 +88,7 @@ fn form_node(etoks: &mut [TokenExtended]) -> Result<TreeNode,AppError> {
                 TokenExtended::Tok(Token::Brace{lhs: _}) => unreachable!(),
             }
         } else {
-            Err(AppError::LexError("".into()))
+            Err(AppError::LexError("Ill-formed token stream".into()))
         }
     } else {
         Err(AppError::ParseError("Empty extended tokens found".into()))
@@ -97,9 +105,13 @@ fn promote_to_extended_tokens(toks: &[Token],parse_fn: impl Fn(&[Token])->Result
     //was it aleady inserted?
     let mut flag = false;
 
+
     for i in 0..toks.len() {
 
-        if curr_indice >= ranges.len() { continue; };
+        if curr_indice >= ranges.len() {
+            ret.push(TokenExtended::Tok(toks[i]));
+            continue;
+        };
 
         let (left,right) = ranges[curr_indice];
 
@@ -222,5 +234,17 @@ mod braces_tests {
 
 #[cfg(test)]
 mod promotion_tests {
-
+    // use crate::TreeNode;
+    // use crate::job as T;
+    //
+    // #[test]
+    // fn t_01() {
+    //     let toks = T::lex::lexer("8 + (100^0.5) - 11 * 9").unwrap();
+    //     let res = T::parse::promote_to_extended_tokens(&toks,|toks| {
+    //         println!("{:?}", toks);
+    //         Ok(TreeNode::from_f64(0.00))
+    //     });
+    //     println!("{:?}",res);
+    //     panic!()
+    // }
 }
