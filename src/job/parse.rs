@@ -8,12 +8,12 @@ pub(crate) fn parse(tokens: Vec<Token>) -> Result<TreeNode,AppError> {
 #[derive(Debug,Clone)]
 enum TokenExtended {
     Tok(Token),
-    Node(TreeNode),
+    Node(Option<TreeNode>),
 }
 
 fn parse4(toks: &[Token]) -> Result<TreeNode,AppError> {
-    let ext = promote_to_extended_tokens(toks, parse4)?;
-    form_node(&ext)
+    let mut ext = promote_to_extended_tokens(toks, parse4)?;
+    form_node(&mut ext)
 }
 
 #[inline]
@@ -23,7 +23,7 @@ fn is_in_group(arg: &[char]) -> impl Fn(char) -> bool + '_ {
     }
 }
 
-fn form_node(etoks: &[TokenExtended]) -> Result<TreeNode,AppError> {
+fn form_node(etoks: &mut [TokenExtended]) -> Result<TreeNode,AppError> {
 
     const ADDITIVE_OPS: &[char] = &['+','-'];
     const MULTIPLICATIVE_OPS: &[char] = &['*','/'];
@@ -63,13 +63,13 @@ fn form_node(etoks: &[TokenExtended]) -> Result<TreeNode,AppError> {
 
     //iter() doesn't borrow vec to the end of the method, only for the min search.
     if let Some((min,_)) = etoks.iter().enumerate().min_by(|(_,l),(_,r)| cmp_closure(l,r)) {
-        let left = &etoks[0..min];
-        if let Some((curr,right)) = match &etoks[min..] {
-            [curr,ref right @ ..] => Some((curr,right)),
+        let (left,right) = etoks.split_at_mut(min);
+        if let Some((curr,right)) = match right {
+            [ref mut curr,ref mut right @ ..] => Some((curr,right)),
             _ => None,
         } {
             match curr {
-                TokenExtended::Node(nod) => Ok(nod.clone()),
+                TokenExtended::Node(nod) => Ok(nod.take().unwrap()),
                 TokenExtended::Tok(Token::Op(op)) => {
                     let mut ret = TreeNode::from_op(*op);
                     let ch = (form_node(left)?,form_node(right)?);
@@ -98,7 +98,7 @@ fn promote_to_extended_tokens(toks: &[Token],parse_fn: impl Fn(&[Token])->Result
     let mut flag = false;
 
     for i in 0..toks.len() {
-        
+
         if curr_indice >= ranges.len() { continue; };
 
         let (left,right) = ranges[curr_indice];
@@ -107,7 +107,7 @@ fn promote_to_extended_tokens(toks: &[Token],parse_fn: impl Fn(&[Token])->Result
             if !flag {
                 let l = left + 1;
                 let r = right - 1;
-                ret.push(TokenExtended::Node(parse_fn(&toks[l..=r])?));
+                ret.push(TokenExtended::Node(Some(parse_fn(&toks[l..=r])?)));
                 flag = true;
             }
         } else {

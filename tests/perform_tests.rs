@@ -8,7 +8,8 @@ fn t_01() {
             assert_eq!(num,2.0);
         },
         Err(e) => {
-            panic!(e)
+            println!("{:?}",e);
+            panic!()
         }
     }
 }
