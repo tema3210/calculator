@@ -5,7 +5,7 @@ pub(crate) fn parse(tokens: Vec<Token>) -> Result<TreeNode,AppError> {
     parse4(&tokens)
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 enum TokenExtended {
     Tok(Token),
     Node(TreeNode),
@@ -13,29 +13,38 @@ enum TokenExtended {
 
 fn parse4(toks: &[Token]) -> Result<TreeNode,AppError> {
     let ext = promote_to_extended_tokens(toks, parse4)?;
-    form_node(&ext)
+    form_node(ext)
 }
 
-fn form_node(etoks: &[TokenExtended])->Result<TreeNode,AppError> {
-    type It<'a> = &'a TokenExtended;
-
+fn form_node(mut etoks: Vec<TokenExtended>)->Result<TreeNode,AppError> {
     //TODO:
-    let cmp_closure = |left: It<'_>,right: It<'_>| {
+    let cmp_closure = |left: &TokenExtended,right: &TokenExtended| {
         std::cmp::Ordering::Equal
     };
 
-    //FIX
-    if let Some((min,el)) = etoks.into_iter().enumerate().min_by(|(_,l),(_,r)| cmp_closure(l,r)) {
-        match el {
-            TokenExtended::Node(nod) => Ok(*nod),
-            TokenExtended::Tok(Token::Op(op)) => {
-                let mut ret = TreeNode::from_op(*op);
-                let ch = (form_node(&etoks[..min])?,form_node(&etoks[min+1..])?);
-                ret.push_chidren(Box::new(ch));
-                Ok(ret)
-            },
-            TokenExtended::Tok(Token::Num(num)) => Ok(TreeNode::from_f64(*num)),
-            TokenExtended::Tok(Token::Brace{lhs: _}) => unreachable!(),
+    //iter() doesn't borrow vec to the end of the method, only for the min search.
+    if let Some((min,_)) = etoks.iter().enumerate().min_by(|(_,l),(_,r)| cmp_closure(l,r)) {
+        let (mut right,left) = (etoks.split_off(min),etoks);
+        let (curr,right) = (right.split_off(1),right);
+
+        let el: Option<TokenExtended> = match &*curr {
+            [el] => Some(el.clone()), //unnecessaryclone, but it doens't work without it
+            _ => None,
+        };
+        if let Some(el) = el {
+            match el {
+                TokenExtended::Node(nod) => Ok(nod),
+                TokenExtended::Tok(Token::Op(op)) => {
+                    let mut ret = TreeNode::from_op(op);
+                    let ch = (form_node(left)?,form_node(right)?);
+                    ret.push_chidren(Box::new(ch));
+                    Ok(ret)
+                },
+                TokenExtended::Tok(Token::Num(num)) => Ok(TreeNode::from_f64(num)),
+                TokenExtended::Tok(Token::Brace{lhs: _}) => unreachable!(),
+            }
+        } else {
+            Err(AppError::LexError("Could not split vec into 3 parts...".into()))
         }
     } else {
         Err(AppError::ParseError("Empty extended tokens found".into()))
