@@ -16,10 +16,39 @@ fn parse4(toks: &[Token]) -> Result<TreeNode,AppError> {
     form_node(ext)
 }
 
-fn form_node(mut etoks: Vec<TokenExtended>)->Result<TreeNode,AppError> {
+#[inline]
+fn is_in_group(arg: &[char]) -> impl Fn(char) -> bool + '_ {
+    move |ch| -> bool {
+        arg.iter().any(|&i| i == ch)
+    }
+}
+
+fn form_node(mut etoks: Vec<TokenExtended>) -> Result<TreeNode,AppError> {
+
+    const ADDITIVE_OPS: &[char] = &['+','-'];
+    const MULTIPLICATIVE_OPS: &[char] = &['*','/'];
+    const POWER_OP: &[char] = &['^'];
+
+    //This forms order...
     //TODO:
-    let cmp_closure = |left: &TokenExtended,right: &TokenExtended| {
-        std::cmp::Ordering::Equal
+    let cmp_closure = |left: &TokenExtended,right: &TokenExtended| -> std::cmp::Ordering {
+        use TokenExtended::*;
+        use Token::*;
+        use std::cmp::Ordering::*;
+        match (left,right) {
+            (Tok(Op(l)),Tok(Op(r)))
+                if is_in_group(ADDITIVE_OPS)(*r) && is_in_group(MULTIPLICATIVE_OPS)(*l) => Less,
+            (Tok(Op(l)),Tok(Op(r)))
+                if is_in_group(ADDITIVE_OPS)(*l) && is_in_group(MULTIPLICATIVE_OPS)(*r) => Greater,
+
+            (Tok(Num(_)),Tok(Op(_))) => Less,
+            (Tok(Op(_)),Tok(Num(_))) => Greater,
+
+            (Node(_),Tok(Op(_))) => Greater,
+            (Tok(Op(_)),Node(_)) => Less,
+
+            (_,_) => Equal,
+        }
     };
 
     //iter() doesn't borrow vec to the end of the method, only for the min search.
@@ -28,7 +57,7 @@ fn form_node(mut etoks: Vec<TokenExtended>)->Result<TreeNode,AppError> {
         let (curr,right) = (right.split_off(1),right);
 
         let el: Option<TokenExtended> = match &*curr {
-            [el] => Some(el.clone()), //unnecessaryclone, but it doens't work without it
+            [el] => Some(el.clone()), //unnecessary clone, but it doens't work without it
             _ => None,
         };
         if let Some(el) = el {
