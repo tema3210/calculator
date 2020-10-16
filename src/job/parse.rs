@@ -68,11 +68,11 @@ fn form_node(etoks: &mut [TokenExtended]) -> Result<TreeNode,AppError> {
 
             //power and multiplic.
             (Tok(Op(l)),Tok(Op(r)))
-                if is_in_group(MULTIPLICATIVE_OPS)(*l) && is_in_group(POWER_OP)(*r) => Greater,
+                if is_in_group(MULTIPLICATIVE_OPS)(*l) && is_in_group(POWER_OP)(*r) => Less,
             (Tok(Op(l)),Tok(Op(r)))
-                if is_in_group(MULTIPLICATIVE_OPS)(*r) && is_in_group(POWER_OP)(*l) => Less,
+                if is_in_group(MULTIPLICATIVE_OPS)(*r) && is_in_group(POWER_OP)(*l) => Greater,
 
-            (Tok(Op(_)),Tok(Op(_))) => unreachable!(),
+            (Tok(Op(_)),Tok(Op(_))) => Equal,
 
 
         }
