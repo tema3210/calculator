@@ -2,6 +2,7 @@ use crate::*;
 
 #[inline]
 pub(crate) fn parse(tokens: Vec<Token>) -> Result<TreeNode,AppError> {
+    // println!("parser got: {:#?}",&tokens);
     parse4(&tokens)
 }
 
@@ -39,9 +40,17 @@ fn form_node(etoks: &mut [TokenExtended]) -> Result<TreeNode,AppError> {
             (Tok(Num(_)),Node(_)) => Equal,
             (Node(_),Tok(Num(_))) => Equal,
 
-            (Tok(Num(_)),_) => Greater,
-            (_,Tok(Num(_))) => Less,
+            (Tok(Num(_)),Tok(Num(_))) => Equal,
+            (Node(_),Node(_)) => Equal,
 
+            (Tok(Num(_)),Tok(Op(_))) => Greater,
+            (Tok(Op(_)),Tok(Num(_))) => Less,
+
+            (Node(_),Tok(Op(_))) => Greater,
+            (Tok(Op(_)),Node(_)) => Less,
+
+            (Tok(Brace{lhs: _}),_) => unreachable!(),
+            (_,Tok(Brace{lhs: _})) => unreachable!(),
 
             //Less,Greater
 
@@ -63,14 +72,15 @@ fn form_node(etoks: &mut [TokenExtended]) -> Result<TreeNode,AppError> {
             (Tok(Op(l)),Tok(Op(r)))
                 if is_in_group(MULTIPLICATIVE_OPS)(*r) && is_in_group(POWER_OP)(*l) => Less,
 
-            (_,_) => Equal,
+            (Tok(Op(_)),Tok(Op(_))) => unreachable!(),
+
 
         }
     };
 
     //iter() doesn't borrow vec to the end of the method, only for the min search.
     if let Some((min,_)) = etoks.iter().enumerate().min_by(|(_,l),(_,r)| cmp_closure(l,r)) {
-        println!("next min: \n {:#?}",&etoks[min]);
+        // println!("next min: \n {:#?}",&etoks[min]);
         let (left,right) = etoks.split_at_mut(min);
         if let Some((curr,right)) = match right {
             [ref mut curr,ref mut right @ ..] => Some((curr,right)),
@@ -96,6 +106,7 @@ fn form_node(etoks: &mut [TokenExtended]) -> Result<TreeNode,AppError> {
 }
 
 fn promote_to_extended_tokens(toks: &[Token],parse_fn: impl Fn(&[Token])->Result<TreeNode,AppError>) -> Result<Vec<TokenExtended>,AppError> {
+    // println!("promotion got: {:?}",toks );
     //of braces
     let ranges = process_braces(toks)?;
     let mut ret = Vec::new();
